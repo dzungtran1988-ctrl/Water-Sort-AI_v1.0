@@ -2,8 +2,14 @@ import { GoogleGenAI, Type } from "@google/genai";
 import { ColorID } from "../types";
 
 export async function analyzeImage(base64Image: string): Promise<ColorID[][] | null> {
-  const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY || "" });
+  // Use VITE_ prefix for Vercel compatibility, fallback to process.env for AI Studio
+  const apiKey = import.meta.env.VITE_GEMINI_API_KEY || process.env.GEMINI_API_KEY || "";
+  const ai = new GoogleGenAI({ apiKey });
   
+  // Note: 'gemini-3-flash-preview' is for AI Studio. 
+  // For Vercel/Public API, 'gemini-1.5-flash' or 'gemini-2.0-flash' is recommended.
+  const modelName = import.meta.env.VITE_GEMINI_MODEL || "gemini-3-flash-preview";
+
   const prompt = `
     Analyze this Water Sort Puzzle image. 
     There are 12 tubes. 10 are partially filled, 2 are empty.
@@ -29,7 +35,7 @@ export async function analyzeImage(base64Image: string): Promise<ColorID[][] | n
 
   try {
     const response = await ai.models.generateContent({
-      model: "gemini-3-flash-preview",
+      model: modelName,
       contents: [
         {
           parts: [

@@ -13,7 +13,7 @@ import { ErrorBoundary } from './components/ErrorBoundary';
 import { solve } from './logic/solver';
 import { analyzeImage } from './services/gemini';
 import { TubeData, ColorID, Move } from './types';
-import { TOTAL_TUBES, MAX_LAYERS } from './constants';
+import { TOTAL_TUBES, MAX_LAYERS, ICON_CONFIGS } from './constants';
 import { Droplets, Sparkles, Info, AlertCircle } from 'lucide-react';
 
 const INITIAL_TUBES: TubeData[] = Array.from({ length: TOTAL_TUBES }, () => []);
@@ -166,6 +166,18 @@ export default function App() {
     }
   };
 
+  const getColorCounts = () => {
+    const counts: Record<string, number> = {};
+    tubes.forEach(tube => {
+      tube.forEach(colorId => {
+        counts[colorId] = (counts[colorId] || 0) + 1;
+      });
+    });
+    return counts;
+  };
+
+  const colorCounts = getColorCounts();
+
   return (
     <ErrorBoundary>
       <div className="min-h-screen bg-gray-950 text-white font-sans selection:bg-amber-500/30">
@@ -259,6 +271,47 @@ export default function App() {
                   The solver uses a hybrid BFS/DFS algorithm. If it can't find a direct win, it will prioritize moves that reveal <span className="text-indigo-300 font-bold">UNKNOWN</span> cells.
                 </p>
               </div>
+
+              <div className="mt-8 p-6 bg-gray-900/50 border border-gray-800 rounded-3xl">
+                <h4 className="text-xs font-bold text-gray-500 uppercase tracking-widest mb-4 flex items-center gap-2">
+                  <Droplets size={14} /> Color Inventory (Goal: 4)
+                </h4>
+                <div className="grid grid-cols-5 gap-2">
+                  {Object.entries(ICON_CONFIGS).map(([id, config]) => {
+                    if (id === 'UNKNOWN') return null;
+                    const count = colorCounts[id] || 0;
+                    const Icon = config.icon;
+                    return (
+                      <div 
+                        key={id} 
+                        className={`flex flex-col items-center p-2 rounded-xl border transition-all ${
+                          count === 4 ? 'bg-emerald-500/10 border-emerald-500/30' : 
+                          count > 4 ? 'bg-red-500/10 border-red-500/30' : 
+                          'bg-gray-800/50 border-gray-700'
+                        }`}
+                        title={`${config.label}: ${count}/4`}
+                      >
+                        <div className="w-8 h-8 rounded-full flex items-center justify-center mb-1" style={{ backgroundColor: config.color }}>
+                          <Icon size={14} className="text-white" />
+                        </div>
+                        <span className={`text-[10px] font-bold ${
+                          count === 4 ? 'text-emerald-400' : 
+                          count > 4 ? 'text-red-400' : 
+                          'text-gray-500'
+                        }`}>
+                          {count}
+                        </span>
+                      </div>
+                    );
+                  })}
+                </div>
+                {colorCounts['UNKNOWN'] > 0 && (
+                  <div className="mt-4 flex items-center justify-between text-[10px] text-gray-500 bg-gray-800/30 p-2 rounded-lg">
+                    <span>UNKNOWN CELLS:</span>
+                    <span className="font-bold text-indigo-400">{colorCounts['UNKNOWN']}</span>
+                  </div>
+                )}
+              </div>
             </div>
           </div>
         </main>
@@ -269,6 +322,7 @@ export default function App() {
             <Palette 
               onSelect={handlePaletteSelect} 
               onClose={() => setEditingCell(null)} 
+              counts={colorCounts}
             />
           )}
         </AnimatePresence>
