@@ -4,11 +4,21 @@ import { ColorID } from "../types";
 export async function analyzeImage(base64Image: string): Promise<ColorID[][] | null> {
   // Use VITE_ prefix for Vercel compatibility, fallback to process.env for AI Studio
   const apiKey = import.meta.env.VITE_GEMINI_API_KEY || process.env.GEMINI_API_KEY || "";
+  
+  if (!apiKey) {
+    console.error("CRITICAL: Gemini API Key is missing. Please set VITE_GEMINI_API_KEY in Vercel Environment Variables.");
+    return null;
+  }
+
   const ai = new GoogleGenAI({ apiKey });
   
-  // Note: 'gemini-3-flash-preview' is for AI Studio. 
-  // For Vercel/Public API, 'gemini-1.5-flash' or 'gemini-2.0-flash' is recommended.
-  const modelName = import.meta.env.VITE_GEMINI_MODEL || "gemini-3-flash-preview";
+  // Detect environment to choose correct model
+  // AI Studio usually has GEMINI_API_KEY in process.env and runs on *.run.app
+  const isAiStudio = typeof process !== 'undefined' && process.env.GEMINI_API_KEY;
+  const defaultModel = isAiStudio ? "gemini-3-flash-preview" : "gemini-1.5-flash";
+  const modelName = import.meta.env.VITE_GEMINI_MODEL || defaultModel;
+
+  console.log(`Using model: ${modelName} for analysis`);
 
   const prompt = `
     Analyze this Water Sort Puzzle image. 
@@ -54,16 +64,24 @@ export async function analyzeImage(base64Image: string): Promise<ColorID[][] | n
       },
     });
 
-    const text = response.text;
-    if (!text) return null;
+    let text = response.text;
+    if (!text) {
+      console.error("Gemini returned empty text response");
+      return null;
+    }
+    
+    // Clean up potential markdown blocks if the model ignores responseMimeType
+    text = text.replace(/```json/g, "").replace(/```/g, "").trim();
     
     const data = JSON.parse(text);
     if (Array.isArray(data) && data.length === 12) {
       return data as ColorID[][];
     }
+    
+    console.error("Invalid data structure received from Gemini:", data);
     return null;
   } catch (error) {
-    console.error("Gemini Vision Error:", error);
+    console.error("Gemini Vision Error Details:", error);
     return null;
   }
 }
