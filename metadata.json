@@ -1,0 +1,5 @@
+{
+  "name": "Water Sort AI Solver",
+  "description": "An AI-powered solver for Water Sort Puzzles with vision recognition and auto-play simulation.",
+  "requestFramePermissions": ["camera"]
+}
